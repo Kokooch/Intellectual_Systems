@@ -1,195 +1,199 @@
 ﻿using System;
+using System.Collections.Generic;
 
-namespace TicTacToe
+class TicTacToe
 {
-    class Program
+    static void PrintBoard(char[,] board)
     {
-        private static readonly char[,] InitialBoard = {
-            { '1', '2', '3' },
-            { '4', '5', '6' },
-            { '7', '8', '9' }
-        };
-        
-        static char[,] board = {
-            { ' ', ' ', ' ' },
-            { ' ', ' ', ' ' },
-            { ' ', ' ', ' ' }
-        };
-
-        static void Main(string[] args)
+        for (int i = 0; i < 3; i++)
         {
-            Console.WriteLine("Initial Board:");
-            PrintBoard(true);
-
-            Console.WriteLine("Enter the initial position for X (1-9): ");
-            int initialMove;
-            while (!int.TryParse(Console.ReadLine(), out initialMove) || initialMove < 1 || initialMove > 9 || !IsMoveValid(initialMove - 1))
+            Console.WriteLine($"{board[i, 0]} | {board[i, 1]} | {board[i, 2]}");
+            if (i < 2)
             {
-                Console.WriteLine("Invalid move. Please enter a valid position (1-9): ");
+                Console.WriteLine("---------");
             }
-            MakeMove(initialMove - 1, 'X');
-
-            while (true)
-            {
-                PrintBoard();
-                if (IsGameOver())
-                    break;
-
-                Console.WriteLine("Computer is making a move...");
-                ComputerMove();
-            }
-
-            PrintBoard();
-            char winner = GetWinner();
-            if (winner != ' ')
-                Console.WriteLine("The winner is: " + winner);
-            else
-                Console.WriteLine("It's a draw!");
         }
+    }
 
-        static void PrintBoard(bool isInitial = false)
+    static bool CheckWinner(char[,] board, char player)
+    {
+        char[,] winConditions = new char[,]
         {
-            Console.WriteLine("-------------");
-            for (int i = 0; i < 3; i++)
+            { board[0, 0], board[0, 1], board[0, 2] },
+            { board[1, 0], board[1, 1], board[1, 2] },
+            { board[2, 0], board[2, 1], board[2, 2] },
+            { board[0, 0], board[1, 0], board[2, 0] },
+            { board[0, 1], board[1, 1], board[2, 1] },
+            { board[0, 2], board[1, 2], board[2, 2] },
+            { board[0, 0], board[1, 1], board[2, 2] },
+            { board[2, 0], board[1, 1], board[0, 2] },
+        };
+
+        for (int i = 0; i < 8; i++)
+        {
+            if (winConditions[i, 0] == player && winConditions[i, 1] == player && winConditions[i, 2] == player)
             {
-                Console.Write("| ");
-                for (int j = 0; j < 3; j++)
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static bool IsFull(char[,] board)
+    {
+        foreach (var cell in board)
+        {
+            if (cell == ' ')
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    static List<(int, int)> GetAvailableMoves(char[,] board)
+    {
+        List<(int, int)> moves = new List<(int, int)>();
+        for (int i = 0; i < 3; i++)
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                if (board[i, j] == ' ')
                 {
-                    if (isInitial)
-                    {
-                        Console.Write(InitialBoard[i,j] + " | ");
-                    }
-                    else
-                    {
-                        Console.Write(board[i, j] + " | ");
-
-                    }
+                    moves.Add((i, j));
                 }
-                Console.WriteLine("\n-------------");
             }
         }
+        return moves;
+    }
 
-        static bool IsMoveValid(int move)
+    static int Minimax(char[,] board, int depth, bool isMaximizing, int alpha, int beta)
+    {
+        if (CheckWinner(board, 'O'))
         {
-            return board[move / 3, move % 3] == ' ';
+            return 1;
+        }
+        if (CheckWinner(board, 'X'))
+        {
+            return -1;
+        }
+        if (IsFull(board))
+        {
+            return 0;
         }
 
-        static void MakeMove(int move, char player)
-        {
-            board[move / 3, move % 3] = player;
-        }
-
-        static bool IsGameOver()
-        {
-            return GetWinner() != ' ' || !HasEmptyCells();
-        }
-
-        static bool HasEmptyCells()
-        {
-            foreach (char cell in board)
-            {
-                if (cell == ' ')
-                    return true;
-            }
-            return false;
-        }
-
-        static char GetWinner()
-        {
-            // Check rows
-            for (int i = 0; i < 3; i++)
-            {
-                if (board[i, 0] == board[i, 1] && board[i, 1] == board[i, 2] && board[i, 0] != ' ')
-                    return board[i, 0];
-            }
-
-            // Check columns
-            for (int i = 0; i < 3; i++)
-            {
-                if (board[0, i] == board[1, i] && board[1, i] == board[2, i] && board[0, i] != ' ')
-                    return board[0, i];
-            }
-
-            // Check diagonals
-            if (board[0, 0] == board[1, 1] && board[1, 1] == board[2, 2] && board[0, 0] != ' ')
-                return board[0, 0];
-            if (board[0, 2] == board[1, 1] && board[1, 1] == board[2, 0] && board[0, 2] != ' ')
-                return board[0, 2];
-
-            return ' ';
-        }
-
-        static void ComputerMove()
+        if (isMaximizing)
         {
             int bestScore = int.MinValue;
-            int bestMove = -1;
-            char currentPlayer = GetCurrentPlayer();
-
-            for (int i = 0; i < 9; i++)
+            foreach (var move in GetAvailableMoves(board))
             {
-                if (IsMoveValid(i))
+                board[move.Item1, move.Item2] = 'O';
+                int score = Minimax(board, depth + 1, false, alpha, beta);
+                board[move.Item1, move.Item2] = ' ';
+                bestScore = Math.Max(score, bestScore);
+                alpha = Math.Max(alpha, score);
+                if (beta <= alpha)
                 {
-                    MakeMove(i, currentPlayer);
-                    int score = Minimax(false, currentPlayer == 'X' ? 'O' : 'X');
-                    board[i / 3, i % 3] = ' ';
-                    if (score > bestScore)
-                    {
-                        bestScore = score;
-                        bestMove = i;
-                    }
+                    break;
                 }
             }
-            MakeMove(bestMove, currentPlayer);
+            return bestScore;
+        }
+        else
+        {
+            int bestScore = int.MaxValue;
+            foreach (var move in GetAvailableMoves(board))
+            {
+                board[move.Item1, move.Item2] = 'X';
+                int score = Minimax(board, depth + 1, true, alpha, beta);
+                board[move.Item1, move.Item2] = ' ';
+                bestScore = Math.Min(score, bestScore);
+                beta = Math.Min(beta, score);
+                if (beta <= alpha)
+                {
+                    break;
+                }
+            }
+            return bestScore;
+        }
+    }
+
+    static (int, int)? FindBestMove(char[,] board, bool isMaximizing)
+    {
+        int bestScore = isMaximizing ? int.MinValue : int.MaxValue;
+        (int, int)? bestMove = null;
+
+        foreach (var move in GetAvailableMoves(board))
+        {
+            board[move.Item1, move.Item2] = isMaximizing ? 'O' : 'X';
+            int score = Minimax(board, 0, !isMaximizing, int.MinValue, int.MaxValue);
+            board[move.Item1, move.Item2] = ' ';
+            if (isMaximizing ? score > bestScore : score < bestScore)
+            {
+                bestScore = score;
+                bestMove = move;
+            }
+        }
+        return bestMove;
+    }
+
+    static void Main()
+    {
+        char[,] board = new char[3, 3];
+        for (int i = 0; i < 3; i++)
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                board[i, j] = ' ';
+            }
         }
 
-        static char GetCurrentPlayer()
+        Console.WriteLine("Welcome to Tic-Tac-Toe! You play as X.");
+        PrintBoard(board);
+
+        Console.WriteLine("Enter your move (row and column) as 'row,col': ");
+        var input = Console.ReadLine().Split(',');
+        int row = int.Parse(input[0]);
+        int col = int.Parse(input[1]);
+        board[row, col] = 'X';
+        PrintBoard(board);
+
+        while (!IsFull(board) && !CheckWinner(board, 'X') && !CheckWinner(board, 'O'))
         {
-            int xCount = 0, oCount = 0;
-            foreach (char cell in board)
+            if (!IsFull(board))
             {
-                if (cell == 'X') xCount++;
-                if (cell == 'O') oCount++;
+                var aiMoveO = FindBestMove(board, true);
+                if (aiMoveO != null)
+                {
+                    board[aiMoveO.Value.Item1, aiMoveO.Value.Item2] = 'O';
+                    Console.WriteLine("AI plays O:");
+                    PrintBoard(board);
+                }
             }
-            return xCount > oCount ? 'O' : 'X';
+
+            if (!IsFull(board))
+            {
+                var aiMoveX = FindBestMove(board, false);
+                if (aiMoveX != null)
+                {
+                    board[aiMoveX.Value.Item1, aiMoveX.Value.Item2] = 'X';
+                    Console.WriteLine("AI plays X:");
+                    PrintBoard(board);
+                }
+            }
         }
 
-        static int Minimax(bool isMaximizing, char currentPlayer)
+        if (CheckWinner(board, 'X'))
         {
-            char winner = GetWinner();
-            if (winner == 'X') return -10;
-            if (winner == 'O') return 10;
-            if (!HasEmptyCells()) return 0;
-
-            if (isMaximizing)
-            {
-                int bestScore = int.MinValue;
-                for (int i = 0; i < 9; i++)
-                {
-                    if (IsMoveValid(i))
-                    {
-                        MakeMove(i, currentPlayer);
-                        int score = Minimax(false, currentPlayer == 'X' ? 'O' : 'X');
-                        board[i / 3, i % 3] = ' ';
-                        bestScore = Math.Max(score, bestScore);
-                    }
-                }
-                return bestScore;
-            }
-            else
-            {
-                int bestScore = int.MaxValue;
-                for (int i = 0; i < 9; i++)
-                {
-                    if (IsMoveValid(i))
-                    {
-                        MakeMove(i, currentPlayer == 'X' ? 'O' : 'X');
-                        int score = Minimax(true, currentPlayer);
-                        board[i / 3, i % 3] = ' ';
-                        bestScore = Math.Min(score, bestScore);
-                    }
-                }
-                return bestScore;
-            }
+            Console.WriteLine("X wins!");
+        }
+        else if (CheckWinner(board, 'O'))
+        {
+            Console.WriteLine("O wins!");
+        }
+        else
+        {
+            Console.WriteLine("It's a draw!");
         }
     }
 }
